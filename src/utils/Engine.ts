@@ -6,10 +6,8 @@ import { position2Coordinate } from './utils'
 import { getFlameMaterial } from './flame'
 
 
-export const getEngineBody = (engineInfo: IEngineInfo, flameMats: any) => {
+export const getEngineBody = (engineInfo: IEngineInfo, flameMats: any, gltfModel: any) => {
   // 纹理贴图
-  const textureLoader = new THREE.TextureLoader();
-  // 设置颜色纹理贴图：Texture对象作为材质map属性的属性值
 
   const { size, position } = engineInfo;
 
@@ -18,31 +16,23 @@ export const getEngineBody = (engineInfo: IEngineInfo, flameMats: any) => {
   const engine_group = new THREE.Group()
 
 
-
-  const engine_geometry = new THREE.CylinderGeometry(2, 1, 1, 8);
-  const engine_material = new THREE.MeshLambertMaterial(
-    {
-      color: 0x3f7b9d,
-    });
-  const engine_mesh = new THREE.Mesh(engine_geometry, engine_material);
-  engine_group.add(engine_mesh);
+  engine_group.add(gltfModel);
 
 
   // flame
   let flameGeo = new THREE.SphereGeometry(0.5, 32, 32);
-  flameGeo.translate(0.5, 0.5, 0);
+  flameGeo.translate(
+    2, 0.8, 0);
   let flameMat = getFlameMaterial();
   flameMats.push(flameMat);
   let flame = new THREE.Mesh(flameGeo, flameMat);
   flame.rotateX(THREE.MathUtils.degToRad(0))
   flame.rotateY(THREE.MathUtils.degToRad(0))
-  // console.log(lat === 0 ? 0 : 120)
   flame.rotateZ(THREE.MathUtils.degToRad(lat === 0 ?
     lng >= 0 ? -120 : 120 :
     lng >= 0 ? 120 : -120))
-  // flame.rotateZ(THREE.MathUtils.degToRad(150))
 
-  const point_light = new THREE.PointLight(0xffffff, 1.5, 300);
+  const point_light = new THREE.PointLight(0xffffff, 0.5, 300);
   point_light.position.set(-1, -2, 0)
   point_light.castShadow = true;
   engine_group.add(point_light);
@@ -54,16 +44,6 @@ export const getEngineBody = (engineInfo: IEngineInfo, flameMats: any) => {
 
   let zDeg = 0
   let yDeg = 0
-  // if (lng === 0) {
-  //   deg = 90 + lat
-  // } else {
-  //   deg = 270 - lat
-  // }
-  // if (lat === 0) {
-  //   zDeg = 90 + lng
-  // } else {
-  //   yDeg = -90 + lng
-  // }
   if (lat === 0) {
     if (lng >= 0) {
       zDeg = 90;

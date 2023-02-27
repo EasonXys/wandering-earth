@@ -12,11 +12,12 @@ import rightSkyImg from '@/assets/skybox/right.jpeg'
 import frontSkyImg from '@/assets/skybox/front.jpeg'
 import backSkyImg from '@/assets/skybox/back.jpeg'
 
-export default {
-  topSkyImg,
-  bottomSkyImg,
+export default [
   leftSkyImg,
   rightSkyImg,
+  topSkyImg,
+  bottomSkyImg,
   frontSkyImg,
   backSkyImg,
-}
+
+]
