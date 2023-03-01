@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-// @ts-ignore
 import * as THREE from 'three'
-// @ts-ignore
+import { Texture } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// @ts-ignore
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { engineBaseInfo, IEngineInfo } from '../../constants'
-// @ts-ignore
 import { getEngineBody } from '../../utils/Engine'
 import { generateStars } from '../../utils/Stars'
 
 import earthImg from '@/assets/earth_new.jpeg'
+import cloudsImg from '@/assets/earth/earth_cloud.jpeg'
 // @ts-ignore
-import bumpImg from '@/assets/earth/earth_bump_4k.jpeg'
+import bumpMapImg from '@/assets/earth/earth_bump_4k.jpeg'
 import normalMapImg from '@/assets/earth/earth_normal_map.jpeg'
 import specularMapImg from '@/assets/earth/earth_specular_map.jpeg'
 import skyImgs from './img'
@@ -24,14 +22,6 @@ let flameMats: any = [];
 const clock = new THREE.Clock();
 
 onMounted(() => {
-
-  // 纹理贴图
-  const textureLoader = new THREE.TextureLoader();
-  // 设置颜色纹理贴图：Texture对象作为材质map属性的属性值
-  const earth_texture = textureLoader.load([earthImg])
-
-
-
 
   // 场景
   const scene = new THREE.Scene();
@@ -75,7 +65,7 @@ onMounted(() => {
 
   // 灯光
   const light = new THREE.AmbientLight(0xeeeeee); // soft white light
-  const point_light = new THREE.PointLight(0xffffff, 2, 4000, 2);
+  const point_light = new THREE.PointLight(0xffffff, 1.5, 4000, 2);
   point_light.position.set(1000, 0, 0);
   // scene.add(light);
   scene.add(point_light);
@@ -111,26 +101,172 @@ onMounted(() => {
 
   // 星海
 
-  const stars_group = generateStars()
-  scene.add(stars_group)
+  // const stars_group = generateStars()
+  // scene.add(stars_group)
 
 
-  //材质对象Material
-  const earth_material = new THREE.MeshPhongMaterial({
-    //设置颜色贴图属性值
-    map: earth_texture,
-    specularMap: new THREE.TextureLoader().load(specularMapImg),
-    specular: 0x111111,
-    bumpMap: new THREE.TextureLoader().load(bumpImg),
-    bumpScale: 0.6,
-    shininess: 50,
+  const planetProto = {
+    sphere: function (size: number) {
+      const sphere = new THREE.SphereGeometry(size, 64, 64);
 
+      return sphere;
+    },
+    material: function (options: Record<string, string | number>) {
+      let material = new THREE.MeshPhongMaterial();
+      if (options) {
+        for (var property in options) {
+          material[property] = options[property];
+        }
+      }
+
+      return material;
+    },
+    glowMaterial: function (intensity: number, fade: number, color: number) {
+      // Custom glow shader from https://github.com/stemkoski/stemkoski.github.com/tree/master/Three.js
+      let glowMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          'c': {
+            type: 'f',
+            value: intensity
+          },
+          'p': {
+            type: 'f',
+            value: fade
+          },
+          glowColor: {
+            type: 'c',
+            value: new THREE.Color(color)
+          },
+          viewVector: {
+            type: 'v3',
+            value: camera.position
+          }
+        },
+        vertexShader: `
+        uniform vec3 viewVector;
+        uniform float c;
+        uniform float p;
+        varying float intensity;
+        void main() {
+          vec3 vNormal = normalize( normalMatrix * normal );
+          vec3 vNormel = normalize( normalMatrix * viewVector );
+          intensity = pow( c - dot(vNormal, vNormel), p );
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }`
+        ,
+        fragmentShader: `
+        uniform vec3 glowColor;
+        varying float intensity;
+        void main() 
+        {
+          vec3 glow = glowColor * intensity;
+          gl_FragColor = vec4( glow, 1.0 );
+        }`
+        ,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        transparent: true
+      });
+
+      return glowMaterial;
+    },
+    texture: function (material: any, property: any, uri: string) {
+      let textureLoader = new THREE.TextureLoader();
+      textureLoader.crossOrigin = true;
+      textureLoader.load(
+        uri,
+        function (texture: Texture) {
+          material[property] = texture;
+          material.needsUpdate = true;
+        }
+      );
+    }
+  };
+
+  let createPlanet = function (options: any) {
+    // Create the planet's Surface
+    let surfaceGeometry = planetProto.sphere(options.surface.size);
+    let surfaceMaterial = planetProto.material(options.surface.material);
+    let surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
+
+    // Create the planet's Atmosphere
+    let atmosphereGeometry = planetProto.sphere(options.surface.size + options.atmosphere.size);
+    let atmosphereMaterialDefaults = {
+      side: THREE.DoubleSide,
+      transparent: true
+    }
+    let atmosphereMaterialOptions = Object.assign(atmosphereMaterialDefaults, options.atmosphere.material);
+    let atmosphereMaterial = planetProto.material(atmosphereMaterialOptions);
+    let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+
+    // Create the planet's Atmospheric glow
+    let atmosphericGlowGeometry = planetProto.sphere(options.surface.size + options.atmosphere.size + options.atmosphere.glow.size);
+    let atmosphericGlowMaterial = planetProto.glowMaterial(options.atmosphere.glow.intensity, options.atmosphere.glow.fade, options.atmosphere.glow.color);
+    let atmosphericGlow = new THREE.Mesh(atmosphericGlowGeometry, atmosphericGlowMaterial);
+
+    // Nest the planet's Surface and Atmosphere into a planet object
+    let planet = new THREE.Object3D();
+    surface.name = 'surface';
+    atmosphere.name = 'atmosphere';
+    atmosphericGlow.name = 'atmosphericGlow';
+    planet.add(surface);
+    planet.add(atmosphere);
+    planet.add(atmosphericGlow);
+
+    // Load the Surface's textures
+    for (let textureProperty in options.surface.textures) {
+      planetProto.texture(
+        surfaceMaterial,
+        textureProperty,
+        options.surface.textures[textureProperty]
+      );
+    }
+
+    // Load the Atmosphere's texture
+    for (let textureProperty in options.atmosphere.textures) {
+      planetProto.texture(
+        atmosphereMaterial,
+        textureProperty,
+        options.atmosphere.textures[textureProperty]
+      );
+    }
+
+    return planet;
+  };
+
+  const earth_sphere = createPlanet({
+    surface: {
+      size: 36,
+      material: {
+        bumpScale: 0.05,
+        specular: new THREE.Color('grey'),
+        shininess: 10
+      },
+      textures: {
+        map: earthImg,
+        bumpMap: bumpMapImg,
+        specularMap: specularMapImg
+      }
+    },
+    atmosphere: {
+      size: 0.3,
+      material: {
+        opacity: 0.8,
+      },
+      textures: {
+        map: cloudsImg
+      },
+      glow: {
+        size: 0.5,
+        intensity: 0.7,
+        fade: 7,
+        color: 0x93cfef
+      }
+    },
   });
+
   // 创建流浪地球group
   const earth_group = new THREE.Group();
-  // 创建地球主体
-  const earth_geometry = new THREE.SphereGeometry(36, 64, 64);
-  const earth_sphere = new THREE.Mesh(earth_geometry, earth_material);
 
   earth_group.add(earth_sphere);
 
@@ -170,15 +306,15 @@ onMounted(() => {
     flameMats.forEach((fm: any) => {
       fm.uniforms.time.value = +(time * 20).toFixed(2);
     })
-    stars_group.position.x -= 0.1
-    if (stars_group.position.x < -500) {
-      stars_group.position.x = 500
-    }
+    // stars_group.position.x -= 0.1
+    // if (stars_group.position.x < -500) {
+    //   stars_group.position.x = 500
+    // }
 
     // 摄像机椭圆曲线环绕
-    // camera.position.x = 150 * Math.sin(time / 10)
-    // camera.position.z = 100 * Math.cos(time / 10)
-    // camera.position.y = 90 * Math.cos(time / 10)
+    camera.position.x = 150 * Math.sin(time / 10)
+    camera.position.z = 100 * Math.cos(time / 10)
+    camera.position.y = 90 * Math.cos(time / 10)
 
 
 
