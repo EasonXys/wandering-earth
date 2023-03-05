@@ -12,7 +12,7 @@ const pathResolve = (dir: string): string => {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  base: './',
+  base: '.',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

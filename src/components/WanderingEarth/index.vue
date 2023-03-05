@@ -1,69 +1,59 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import * as THREE from 'three'
-import { Texture } from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { engineBaseInfo, IEngineInfo } from '../../constants'
-import { getEngineBody } from '../../utils/Engine'
-import { generateStars } from '../../utils/Stars'
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
+import { onMounted } from "vue";
+import * as THREE from "three";
+import { Texture } from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import Stats from "three/examples/jsm/libs/stats.module.js";
+import { engineBaseInfo, IEngineInfo } from "../../constants";
+import { getEngineBody } from "../../utils/Engine";
+import { generateStars } from "../../utils/Stars";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 
-import earthImg from '@/assets/earth_new.jpeg'
-import cloudsImg from '@/assets/earth/earth_cloud.jpeg'
-// @ts-ignore
-import bumpMapImg from '@/assets/earth/earth_bump_4k.jpeg'
-import normalMapImg from '@/assets/earth/earth_normal_map.jpeg'
-import specularMapImg from '@/assets/earth/earth_specular_map.jpeg'
-import skyImgs from './img'
-
+import earthImg from "@/assets/earth_new.jpeg";
+import cloudsImg from "@/assets/earth/earth_cloud.jpeg";
+import bumpMapImg from "@/assets/earth/earth_bump_4k.jpeg";
+import specularMapImg from "@/assets/earth/earth_specular_map.jpeg";
+import skyImgs from "./img";
 
 let time = 0;
-let flameMats: any = [];
 const clock = new THREE.Clock();
-let objLoader;
-let atmosphere;
-onMounted(() => {
+let flameMats: any = [];
+let mixers: Array<THREE.AnimationMixer> = [];
+let atmosphere: any;
 
+const loader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+const gltfEnginePath = "src/model/engine2Draco.gltf";
+// const gltfFlamePath = "src/model/flame3Draco.gltf";
+
+onMounted(() => {
   // 场景
   const scene = new THREE.Scene();
-  // scene.fog = new THREE.Fog(0x020924, 80, 500);
-  const {
-    rightSkyImg,
-    leftSkyImg,
-    topSkyImg,
-    bottomSkyImg,
-    frontSkyImg,
-    backSkyImg,
-  } = skyImgs
+  scene.background = new THREE.Color("grey");
 
-  // // 天空盒子
-  // let urls = [
-  //   leftSkyImg,
-  //   rightSkyImg,
-  //   topSkyImg,
-  //   bottomSkyImg,
-  //   frontSkyImg,
-  //   backSkyImg,
+  /**
+   * 天空盒子
+   */
 
-  // ];
-  // let skyboxCubemap = new THREE.CubeTextureLoader().load(urls)
-  // skyboxCubemap.format = THREE.RGBAFormat;
-  // let skyboxShader = THREE.ShaderLib['cube'];
-  // skyboxShader.uniforms['tCube'].value = skyboxCubemap;
-  // let skyBox = new THREE.Mesh(
-  //   new THREE.BoxGeometry(10000, 20000, 20000),
-  //   new THREE.ShaderMaterial({
-  //     fragmentShader: skyboxShader.fragmentShader,//片段着色器
-  //     vertexShader: skyboxShader.vertexShader,//顶点着色器
-  //     uniforms: skyboxShader.uniforms,//是所有顶点都具有相同的值的变量。 比如灯光，
-  //     // 雾，和阴影贴图就是被储存在uniforms中的数据。 uniforms可以通过顶点着色器和片元着色器来访问。
-  //     depthWrite: false,//深度测试
-  //     side: THREE.BackSide//正反面
-  //   })
-  // );
-  // scene.add(skyBox);
-  // scene.rotation.y = THREE.MathUtils.degToRad(150);
+  let urls = skyImgs;
+  let skyboxCubemap = new THREE.CubeTextureLoader().load(urls);
+  skyboxCubemap.format = THREE.RGBAFormat;
+  let skyboxShader = THREE.ShaderLib["cube"];
+  skyboxShader.uniforms["tCube"].value = skyboxCubemap;
+  let skyBox = new THREE.Mesh(
+    new THREE.BoxGeometry(10000, 20000, 20000),
+    new THREE.ShaderMaterial({
+      fragmentShader: skyboxShader.fragmentShader, //片段着色器
+      vertexShader: skyboxShader.vertexShader, //顶点着色器
+      uniforms: skyboxShader.uniforms, //是所有顶点都具有相同的值的变量。 比如灯光，
+      // 雾，和阴影贴图就是被储存在uniforms中的数据。 uniforms可以通过顶点着色器和片元着色器来访问。
+      depthWrite: false, //深度测试
+      side: THREE.BackSide, //正反面
+    })
+  );
+  scene.add(skyBox);
+  scene.rotation.y = THREE.MathUtils.degToRad(150);
 
   // 灯光
   const light = new THREE.AmbientLight(0xeeeeee, 0.1); // soft white light
@@ -72,8 +62,7 @@ onMounted(() => {
   scene.add(light);
   scene.add(point_light);
 
-
-  // 摄像机 
+  // 摄像机
   /**
    * @param1  视野角度
    * @param2  长宽比
@@ -81,6 +70,7 @@ onMounted(() => {
    * @param4  远截面
    */
   // const camera = new THREE.OrthographicCamera(-800, 800, 400, -400, 1, 1000);
+  // const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 2000);
   const camera = new THREE.PerspectiveCamera(80, 2, 1, 2000);
   camera.position.x = 50;
   camera.position.z = 200;
@@ -88,24 +78,23 @@ onMounted(() => {
 
   // 渲染器
   const renderer = new THREE.WebGLRenderer({
-    // 抗锯齿 
+    // 抗锯齿
     // antialias: true,
     // alpha: true
   });
   renderer.setSize(800, 400);
-  renderer.setPixelRatio((window.devicePixelRatio) ? window.devicePixelRatio : 1);
-  renderer.autoClear = false;
   // renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio ? window.devicePixelRatio : 1);
+  renderer.autoClear = false;
 
-  const earthContainer = document.querySelector('.earth__bg-container')
+  const earthContainer = document.querySelector(".earth__bg-container");
   if (!earthContainer) return;
   earthContainer.appendChild(renderer.domElement);
 
   // 星海
 
-  // const stars_group = generateStars()
-  // scene.add(stars_group)
-
+  const stars_group = generateStars();
+  scene.add(stars_group);
 
   const planetProto = {
     sphere: function (size: number) {
@@ -127,22 +116,22 @@ onMounted(() => {
       // Custom glow shader from https://github.com/stemkoski/stemkoski.github.com/tree/master/Three.js
       let glowMaterial = new THREE.ShaderMaterial({
         uniforms: {
-          'c': {
-            type: 'f',
-            value: intensity
+          c: {
+            type: "f",
+            value: intensity,
           },
-          'p': {
-            type: 'f',
-            value: fade
+          p: {
+            type: "f",
+            value: fade,
           },
           glowColor: {
-            type: 'c',
-            value: new THREE.Color(color)
+            type: "c",
+            value: new THREE.Color(color),
           },
           viewVector: {
-            type: 'v3',
-            value: camera.position
-          }
+            type: "v3",
+            value: camera.position,
+          },
         },
         vertexShader: `
         uniform vec3 viewVector;
@@ -154,8 +143,7 @@ onMounted(() => {
           vec3 vNormel = normalize( normalMatrix * viewVector );
           intensity = pow( c - dot(vNormal, vNormel), p );
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-        }`
-        ,
+        }`,
         fragmentShader: `
         uniform vec3 glowColor;
         varying float intensity;
@@ -163,11 +151,10 @@ onMounted(() => {
         {
           vec3 glow = glowColor * intensity;
           gl_FragColor = vec4( glow, 1.0 );
-        }`
-        ,
+        }`,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
-        transparent: true
+        transparent: true,
       });
 
       return glowMaterial;
@@ -175,14 +162,11 @@ onMounted(() => {
     texture: function (material: any, property: any, uri: string) {
       let textureLoader = new THREE.TextureLoader();
       textureLoader.crossOrigin = true;
-      textureLoader.load(
-        uri,
-        function (texture: Texture) {
-          material[property] = texture;
-          material.needsUpdate = true;
-        }
-      );
-    }
+      textureLoader.load(uri, function (texture: Texture) {
+        material[property] = texture;
+        material.needsUpdate = true;
+      });
+    },
   };
 
   let createPlanet = function (options: any) {
@@ -192,25 +176,41 @@ onMounted(() => {
     let surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
 
     // Create the planet's Atmosphere
-    let atmosphereGeometry = planetProto.sphere(options.surface.size + options.atmosphere.size);
+    let atmosphereGeometry = planetProto.sphere(
+      options.surface.size + options.atmosphere.size
+    );
     let atmosphereMaterialDefaults = {
       side: THREE.DoubleSide,
-      transparent: true
-    }
-    let atmosphereMaterialOptions = Object.assign(atmosphereMaterialDefaults, options.atmosphere.material);
+      transparent: true,
+    };
+    let atmosphereMaterialOptions = Object.assign(
+      atmosphereMaterialDefaults,
+      options.atmosphere.material
+    );
     let atmosphereMaterial = planetProto.material(atmosphereMaterialOptions);
     atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
 
     // Create the planet's Atmospheric glow
-    let atmosphericGlowGeometry = planetProto.sphere(options.surface.size + options.atmosphere.size + options.atmosphere.glow.size);
-    let atmosphericGlowMaterial = planetProto.glowMaterial(options.atmosphere.glow.intensity, options.atmosphere.glow.fade, options.atmosphere.glow.color);
-    let atmosphericGlow = new THREE.Mesh(atmosphericGlowGeometry, atmosphericGlowMaterial);
+    let atmosphericGlowGeometry = planetProto.sphere(
+      options.surface.size +
+        options.atmosphere.size +
+        options.atmosphere.glow.size
+    );
+    let atmosphericGlowMaterial = planetProto.glowMaterial(
+      options.atmosphere.glow.intensity,
+      options.atmosphere.glow.fade,
+      options.atmosphere.glow.color
+    );
+    let atmosphericGlow = new THREE.Mesh(
+      atmosphericGlowGeometry,
+      atmosphericGlowMaterial
+    );
 
     // Nest the planet's Surface and Atmosphere into a planet object
     let planet = new THREE.Object3D();
-    surface.name = 'surface';
-    atmosphere.name = 'atmosphere';
-    atmosphericGlow.name = 'atmosphericGlow';
+    surface.name = "surface";
+    atmosphere.name = "atmosphere";
+    atmosphericGlow.name = "atmosphericGlow";
     planet.add(surface);
     planet.add(atmosphere);
     planet.add(atmosphericGlow);
@@ -236,139 +236,145 @@ onMounted(() => {
     return planet;
   };
 
-  // const earth_sphere = createPlanet({
-  //   surface: {
-  //     size: 36,
-  //     material: {
-  //       bumpScale: 0.05,
-  //       specular: new THREE.Color('grey'),
-  //       shininess: 10
-  //     },
-  //     textures: {
-  //       map: earthImg,
-  //       bumpMap: bumpMapImg,
-  //       specularMap: specularMapImg
-  //     }
-  //   },
-  //   atmosphere: {
-  //     size: 0.3,
-  //     material: {
-  //       opacity: 0.8,
-  //       shininess: 10
-  //     },
-  //     textures: {
-  //       map: cloudsImg
-  //     },
-  //     glow: {
-  //       size: 0.5,
-  //       intensity: 0.7,
-  //       fade: 7,
-  //       color: 0x93cfef
-  //     }
-  //   },
-  // });
+  const earth_sphere = createPlanet({
+    surface: {
+      size: 36,
+      material: {
+        bumpScale: 0.05,
+        specular: new THREE.Color("grey"),
+        shininess: 10,
+      },
+      textures: {
+        map: earthImg,
+        bumpMap: bumpMapImg,
+        specularMap: specularMapImg,
+      },
+    },
+    atmosphere: {
+      size: 0.3,
+      material: {
+        opacity: 0.8,
+        shininess: 10,
+      },
+      textures: {
+        map: cloudsImg,
+      },
+      glow: {
+        size: 0.5,
+        intensity: 0.7,
+        fade: 7,
+        color: 0x93cfef,
+      },
+    },
+  });
 
   // 创建流浪地球group
   const earth_group = new THREE.Group();
 
-  // earth_group.add(earth_sphere);
-
-  // engineBaseInfo.forEach((ei: IEngineInfo) => {
-  //   const { engine_group, flameMaterials } = getEngineBody(ei, flameMats)
-  //   flameMats = flameMaterials
-  //   earth_group.add(engine_group);
-
-  // })
-
-
+  earth_group.add(earth_sphere);
 
   earth_group.rotation.z = THREE.MathUtils.degToRad(90);
 
-  objLoader = new OBJLoader()
-  objLoader.load(
-    'src/models/engine/engine.obj',
-    (object) => {
-      // (object.children[0] as THREE.Mesh).material = material
-      // object.traverse(function (child) {
-      //     if ((child as THREE.Mesh).isMesh) {
-      //         (child as THREE.Mesh).material = material
-      //     }
-      // })
-      object.position.y = - 50;
-      object.position.x = 50;
-      object.scale.x = 10
-      object.scale.y = 10
-      object.scale.z = 10
+  // https://blog.csdn.net/weixin_40045529/article/details/108666431
+  dracoLoader.setDecoderPath("/gltf/");
+  loader.setDRACOLoader(dracoLoader);
 
-      scene.add(object)
-    },
-    (xhr) => {
-      console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
-    },
-    (error) => {
-      console.log(error)
-    }
-  )
+  // loader.load(
+  //   gltfFlamePath,
+  //   (gltf) => {
+  //     console.log(gltf)
+  //     let gltfModel = gltf.scene.clone()
+  //     gltfModel.position.set(0, 0, 0)
 
-  scene.add(earth_group);
+  //     const mixer = new THREE.AnimationMixer(gltfModel);
+  //     const actions = [];
+  //     for (var i = 0; i < gltf.animations.length; i++) {
+  //       actions[i] = mixer.clipAction(gltf.animations[i]);
+  //     }
+  //     // 播放
+  //     actions.forEach((action) => {
+  //       action.play();
+  //     });
+  //     mixers.push(mixer);
+  //     scene.add(gltfModel)
 
+  //     // let mixer = new THREE.AnimationMixer(gltfModel.children[2]);
+  //     // mixer.clipAction(gltf.animations[0]).setDuration(10).play();
+  //     // mixers.push(mixer);
+  //     // scene.add(gltfModel)
+
+  //   });
+
+  loader.load(gltfEnginePath, (gltf) => {
+    engineBaseInfo.forEach((ei: IEngineInfo) => {
+      let gltfModel = gltf.scene.clone();
+      gltfModel.scale.x = 0.3;
+      gltfModel.scale.y = 0.3;
+      gltfModel.scale.z = 0.3;
+      gltfModel.rotation.z = THREE.MathUtils.degToRad(180);
+
+      const { engine_group, flameMaterials } = getEngineBody(
+        ei,
+        flameMats,
+        gltfModel
+      );
+      flameMats = flameMaterials;
+      earth_group.add(engine_group);
+      scene.add(earth_group);
+    });
+  });
 
   // 控制器
   const controls = new OrbitControls(camera, renderer.domElement, scene);
-  // controls.autoRotate = true;
-
 
   // current fps
   const stats = Stats();
   earthContainer.appendChild(stats.dom);
 
-  controls.update()
+  controls.update();
 
   // 渲染场景
   const animate = () => {
     requestAnimationFrame(animate);
+    const delta = clock.getDelta();
 
-    time += clock.getDelta();
+    time += delta;
+    // if (mixers.length > 0) {
+    for (let i in mixers) {
+      // 重复播放动画
+      mixers[i].update(delta / 10);
+    }
+
+    // }
 
     flameMats.forEach((fm: any) => {
       fm.uniforms.time.value = +(time * 20).toFixed(2);
-    })
+    });
     // stars_group.position.x -= 1
     // if (stars_group.position.x < -1000) {
     //   stars_group.position.x = 1000
     // }
 
     // 摄像机椭圆曲线环绕
-    // camera.position.x = 50 * Math.sin(time / 5)
-    // camera.position.z = 200 * Math.cos(time / 5)
-    // camera.position.y = 90 * Math.cos(time / 5)
+    // camera.position.x = 50 * Math.sin(time / 10)
+    // camera.position.z = 200 * Math.cos(time / 10)
+    // camera.position.y = 90 * Math.cos(time / 10)
     // 云层飘动
     // atmosphere.rotation.y = Math.cos(time / 50)
     // atmosphere.rotation.x = Math.cos(time / 50)
     // atmosphere.rotation.z = Math.cos(time / 50)
 
-
-
-
-
-
-    controls.update()
+    stats.update();
+    controls.update();
     renderer.render(scene, camera);
-
-
-  }
+  };
   animate();
-})
-
-
+});
 </script>
 
 <template>
   <div>
-
-    <div class="earth__bg-container">
-
-    </div>
+    <div class="earth__bg-container"></div>
   </div>
 </template>
 
