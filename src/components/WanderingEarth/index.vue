@@ -24,7 +24,6 @@ let atmosphere: any;
 
 const loader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
-const gltfEnginePath = "src/model/engine2Draco.gltf";
 // const gltfFlamePath = "src/model/flame3Draco.gltf";
 
 onMounted(() => {
@@ -302,7 +301,7 @@ onMounted(() => {
 
   //   });
 
-  loader.load(gltfEnginePath, (gltf) => {
+  loader.load("/engine2Draco.gltf", (gltf) => {
     engineBaseInfo.forEach((ei: IEngineInfo) => {
       let gltfModel = gltf.scene.clone();
       gltfModel.scale.x = 0.3;
