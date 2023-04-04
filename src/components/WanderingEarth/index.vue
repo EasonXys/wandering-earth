@@ -79,8 +79,8 @@ onMounted(() => {
   // 渲染器
   const renderer = new THREE.WebGLRenderer({
     // 抗锯齿
-    // antialias: true,
-    // alpha: true
+    antialias: true,
+    alpha: true,
   });
   renderer.setSize(800, 400);
   // renderer.setSize(window.innerWidth, window.innerHeight);
@@ -105,9 +105,7 @@ onMounted(() => {
     material: function (options: Record<string, string | number>) {
       let material = new THREE.MeshPhongMaterial();
       if (options) {
-        for (var property in options) {
-          material[property] = options[property];
-        }
+        material = Object.assign(material, options);
       }
 
       return material;
@@ -155,13 +153,12 @@ onMounted(() => {
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         transparent: true,
-      });
+      } as THREE.ShaderMaterialParameters);
 
       return glowMaterial;
     },
     texture: function (material: any, property: any, uri: string) {
       let textureLoader = new THREE.TextureLoader();
-      textureLoader.crossOrigin = true;
       textureLoader.load(uri, function (texture: Texture) {
         material[property] = texture;
         material.needsUpdate = true;
@@ -325,7 +322,7 @@ onMounted(() => {
   });
 
   // 控制器
-  const controls = new OrbitControls(camera, renderer.domElement, scene);
+  const controls = new OrbitControls(camera, renderer.domElement);
 
   // current fps
   const stats = Stats();
@@ -340,20 +337,20 @@ onMounted(() => {
 
     time += delta;
     // if (mixers.length > 0) {
-    for (let i in mixers) {
-      // 重复播放动画
-      mixers[i].update(delta / 10);
-    }
+    // for (let i in mixers) {
+    //   // 重复播放动画
+    //   mixers[i].update(delta / 10);
+    // }
 
     // }
 
     flameMats.forEach((fm: any) => {
       fm.uniforms.time.value = +(time * 20).toFixed(2);
     });
-    // stars_group.position.x -= 1
-    // if (stars_group.position.x < -1000) {
-    //   stars_group.position.x = 1000
-    // }
+    stars_group.position.x -= 1;
+    if (stars_group.position.x < -1000) {
+      stars_group.position.x = 1000;
+    }
 
     // 摄像机椭圆曲线环绕
     // camera.position.x = 50 * Math.sin(time / 10)
