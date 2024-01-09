@@ -15,7 +15,6 @@ export const generateStars = (scene: THREE.Scene) => {
     particlePositions[i] = (rand * 2000 - 500) * (rand > 0.5 ? 1 : -1)
     colors[i] = rand * 0.7 + 0.3
   }
-  console.log({ colors })
   // 设置属性
   pointBuffer.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3))
   pointBuffer.setAttribute('color', new THREE.BufferAttribute(colors, 3))

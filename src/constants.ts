@@ -1,13 +1,21 @@
 export const RADIUS = 36
 export const infoMap = new Map([
-  // [0, { num: 6, scale: 0.3 }],
-  // [0, { num: 36, scale: 0.2 }],
-  // [15, { num: 32, scale: 0.15 }],
-  // [30, { num: 24, scale: 0.15 }],
-  // [45, { num: 24, scale: 0.15 }],
-  [60, { num: 16, scale: 0.15 }],
-  // [75, { num: 12, scale: 0.15 }],
-  [90, { num: 1, scale: 0.2 }]
+  [0, { num: 6, scale: .2 }],
+  [15, { num: 12, scale: .15 }],
+  [30, { num: 8, scale: .15 }],
+  [45, { num: 8, scale: .15 }],
+  [60, { num: 12, scale: .15 }],
+  [75, { num: 8, scale: .15 }],
+  [90, { num: 1, scale: .2 }]
+
+
+  // [0, { num: 36, scale: .2 }],
+  // [15, { num: 32, scale: .15 }],
+  // [30, { num: 24, scale: .15 }],
+  // [45, { num: 24, scale: .15 }],
+  // [60, { num: 16, scale: .15 }],
+  // [75, { num: 12, scale: .15 }],
+  // [90, { num: 1, scale: .2 }]
 ])
 
 export class Coordinate {
