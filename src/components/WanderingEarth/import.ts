@@ -11,6 +11,8 @@ import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js'
 import { DotScreenPass } from 'three/examples/jsm/postprocessing/DotScreenPass.js'
 import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js'
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass'
+import { RenderPixelatedPass } from 'three/examples/jsm/postprocessing/RenderPixelatedPass'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass'
 
 export {
   OrbitControls,
@@ -26,5 +28,7 @@ export {
   FilmPass,
   DotScreenPass,
   GlitchPass,
-  AfterimagePass
+  AfterimagePass,
+  RenderPixelatedPass,
+  OutputPass
 }

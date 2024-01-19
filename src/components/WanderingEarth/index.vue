@@ -22,7 +22,9 @@ import {
   FilmPass,
   DotScreenPass,
   GlitchPass,
-  AfterimagePass
+  AfterimagePass,
+  RenderPixelatedPass,
+  OutputPass
 } from './import'
 
 
@@ -75,20 +77,22 @@ const handleWindowResize = () => {
 const generateSky = () => {
   const geometry = new THREE.SphereGeometry(1000, 60, 40);
   const texture = new THREE.TextureLoader().load('src/assets/universe.png');
-  const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, });
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.BackSide,
+    color: new THREE.Color().setHex(0xffffff).multiplyScalar(0.8)
+  });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.rotateY(Math.PI / 180 * 100)
   scene.add(mesh);
 }
 /**
- * 点光源
+ * 光源
  */
 const generateLight = () => {
-  const poLight = new THREE.PointLight(0xeeeeee, 900000, 1000);
-  poLight.position.set(0, 0, -500);
-  const light = new THREE.DirectionalLight(0xffffff, 5)
+  const light = new THREE.DirectionalLight(0xffffff, 3)
+  light.position.set(0, 0, -500);
   scene.add(light);
-  scene.add(poLight);
 }
 /**
  * 星星移动动画
@@ -290,7 +294,8 @@ const generateEngine = async () => {
       rej(null)
     })
   })
-  const pointLight = new THREE.PointLight(0xeeeeee, 5, 8, 0.5);
+  const spotLight = new THREE.SpotLight(0xffffff, 10, 5);
+
   const num = newInfoArr.value.length
 
   let engineArr: any[] = []
@@ -338,7 +343,7 @@ const generateEngine = async () => {
     })
 
     const flameClone = flameModel.clone()
-    const lightClone = pointLight.clone()
+    const lightClone = spotLight.clone()
 
     flameClone.scale.set(item.scale, item.scale * 4, item.scale)
     const flameScale = item.z ? 1 : 1.02
@@ -346,7 +351,7 @@ const generateEngine = async () => {
     flameClone.rotateX(Math.PI / 2)
 
 
-    // flameClone.add(lightClone)
+    flameClone.add(lightClone)
     scene.add(flameClone)
   })
 
@@ -380,6 +385,12 @@ const createComposer = () => {
   glitchPass.enabled = true
 
   const afterimagePass = new AfterimagePass(0.5);
+  afterimagePass.enabled = true
+
+  const renderPixelatedPass = new RenderPixelatedPass(1, scene, camera);
+  composer.addPass(renderPixelatedPass);
+
+  // const outputPass = new OutputPass();
 
   //创建效果组合器
   composer = new EffectComposer(renderer)
@@ -387,7 +398,9 @@ const createComposer = () => {
   // composer.addPass(dotScreenPass)
   // composer.addPass(afterimagePass);
   composer.addPass(filmPass)
+  // composer.addPass(renderPixelatedPass)
   // composer.addPass(glitchPass)
+  // composer.addPass(outputPass);
 }
 
 const initEnv = () => {
@@ -420,7 +433,6 @@ const initEnv = () => {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.update();
   window.addEventListener('resize', handleWindowResize)
-  // controls.addEventListener('change', render);
   createComposer()
 }
 
@@ -437,9 +449,9 @@ const render = () => {
 
 
   // 摄像机椭圆曲线环绕
-  // camera.position.x = 90 * Math.sin(time / 10)
-  // camera.position.y = 90 * Math.cos(time / 10)
-  // camera.position.z = 200 * Math.cos(time / 10)
+  camera.position.x = 90 * Math.sin(time / 10)
+  camera.position.y = 90 * Math.cos(time / 10)
+  camera.position.z = 200 * Math.cos(time / 10)
   // 云层飘动
   // atmosphere.rotation.y = Math.cos(time / 50)
   // atmosphere.rotation.x = Math.cos(time / 50)
